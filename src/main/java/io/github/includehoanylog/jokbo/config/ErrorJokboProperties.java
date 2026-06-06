@@ -4,6 +4,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "error-jokbo")
@@ -24,4 +27,10 @@ public class ErrorJokboProperties {
      * (예: com.example.shop.exception.ErrorCode)
      */
     private String enumClass;
+
+    /**
+     * 스캔 타겟이 될 커스텀 예외 클래스들의 풀 패키지 경로 목록
+     * (예: com.example.shop.exception.BusinessException)
+     */
+    private List<String> exceptionClasses = new ArrayList<>();
 }

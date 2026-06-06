@@ -2,7 +2,6 @@ package io.github.includehoanylog.jokbo.scanner;
 
 import io.github.includehoanylog.jokbo.model.ErrorDefinition;
 import lombok.extern.slf4j.Slf4j;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,9 +10,16 @@ import java.util.List;
 public class JavaParserErrorScanner implements ErrorScanner {
 
     @Override
-    public List<ErrorDefinition> scan(String sourcePath, String enumClassPath) {
+    public List<ErrorDefinition> scan(String sourcePath, String enumClassPath, List<String> targetExceptionClasses) {
         List<ErrorDefinition> errors = new ArrayList<>();
-        log.info("error-jokbo 스캔 시작 -> 경로: {}, 대상 에러 Enum: {}", sourcePath, enumClassPath);
+
+        if (targetExceptionClasses == null || targetExceptionClasses.isEmpty()) {
+            log.warn("error-jokbo: 타겟 예외 클래스가 설정되지 않았습니다. 스캔을 건너뜁니다.");
+            return errors;
+        }
+
+        log.info("error-jokbo 스캔 시작 -> 경로: {}, 대상 Enum: {}, 타겟 예외: {}",
+                sourcePath, enumClassPath, targetExceptionClasses);
 
         File rootDir = new File(sourcePath);
         if (!rootDir.exists() || !rootDir.isDirectory()) {
@@ -21,7 +27,7 @@ public class JavaParserErrorScanner implements ErrorScanner {
             return errors;
         }
 
-        // TODO: 3단계에서 JavaParser를 활용해 본격적으로 소스 코드를 파싱하는 로직이 들어옵니다.
+        // TODO: JavaParser 파싱 로직
 
         return errors;
     }
