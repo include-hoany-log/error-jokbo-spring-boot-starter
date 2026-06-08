@@ -3,6 +3,8 @@ package io.github.includehoanylog.jokbo.scanner;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,13 +14,13 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-@Getter // 👈 추가! (나중에 스웨거가 맵을 꺼내갈 수 있도록)
+@Getter
 public class JavaParserErrorScanner {
 
     private final String basePackage;
     private final List<CompilationUnit> allParsedFiles;
 
-    // 🌟 핵심: 수집한 에러를 담아둘 바구니 (Key: "UserInfoController.getUserInfo", Value: ["NOT_FOUND_USER"])
+    // Key: "UserInfoController.getUserInfo", Value: ["NOT_FOUND_USER"]
     private final Map<String, Set<String>> endpointErrorMap = new HashMap<>();
 
     public JavaParserErrorScanner(List<CompilationUnit> allParsedFiles, String basePackage) {
@@ -27,7 +29,6 @@ public class JavaParserErrorScanner {
     }
 
     public void scanAndMapErrors() {
-        // 🌟 시작 로그를 전문적인 영어로 변경
         log.info("error-jokbo: Starting deep-tracing error analysis... (Target: {})", basePackage);
 
         for (CompilationUnit cu : allParsedFiles) {
@@ -42,13 +43,18 @@ public class JavaParserErrorScanner {
                                 Set<String> apiErrors = tracer.trace(method);
 
                                 if (!apiErrors.isEmpty()) {
+                                    // Unique key for Swagger mapping (Must be maintained for Swagger recognition!)
                                     String className = controller.getNameAsString();
                                     String methodName = method.getNameAsString();
                                     String mapKey = className + "." + methodName;
 
-                                    // 🌟 대망의 전문적인 영어 로그 포맷 적용
-                                    // 출력 예시: [UserInfoController.getUserInfo] [NOT_FOUND_USER] Registered Swagger error specification.
-                                    log.info("[{}] {} Registered Swagger error specification.", mapKey, apiErrors);
+                                    // 🌟 1. Extract endpoint path and HTTP method for log output
+                                    String httpMethod = extractHttpMethod(method);
+                                    String endpointPath = extractEndpointPath(controller, method);
+
+                                    // 🌟 2. Print intuitive URL-based English log!
+                                    // Example: [GET /api/v1/user] [NOT_FOUND_USER] Registered Swagger error specification.
+                                    log.info("[{} {}] {} Registered Swagger error specification.", httpMethod, endpointPath, apiErrors);
 
                                     endpointErrorMap.put(mapKey, apiErrors);
                                 }
@@ -65,5 +71,48 @@ public class JavaParserErrorScanner {
                 method.getAnnotationByName("DeleteMapping").isPresent() ||
                 method.getAnnotationByName("PatchMapping").isPresent() ||
                 method.getAnnotationByName("RequestMapping").isPresent();
+    }
+
+    // 💡 Extract HTTP method type (GET, POST, etc.)
+    private String extractHttpMethod(MethodDeclaration method) {
+        if (method.getAnnotationByName("GetMapping").isPresent()) return "GET";
+        if (method.getAnnotationByName("PostMapping").isPresent()) return "POST";
+        if (method.getAnnotationByName("PutMapping").isPresent()) return "PUT";
+        if (method.getAnnotationByName("DeleteMapping").isPresent()) return "DELETE";
+        if (method.getAnnotationByName("PatchMapping").isPresent()) return "PATCH";
+        return "API";
+    }
+
+    // 💡 Extract actual URL path from Controller and Method annotations
+    private String extractEndpointPath(ClassOrInterfaceDeclaration controller, MethodDeclaration method) {
+        String basePath = getAnnotationValue(controller, "RequestMapping");
+
+        String methodPath = "";
+        for (String mapping : List.of("GetMapping", "PostMapping", "PutMapping", "DeleteMapping", "PatchMapping", "RequestMapping")) {
+            String path = getAnnotationValue(method, mapping);
+            if (!path.isEmpty()) {
+                methodPath = path;
+                break;
+            }
+        }
+
+        // Combine and refine paths (e.g., /api/v1/user + /delete -> /api/v1/user/delete)
+        String fullPath = basePath + (methodPath.startsWith("/") ? "" : "/") + methodPath;
+        fullPath = fullPath.replaceAll("//+", "/"); // Remove potential duplicate slashes
+
+        // Remove trailing slash if present (e.g., /api/v1/user/ -> /api/v1/user)
+        if (fullPath.endsWith("/") && fullPath.length() > 1) {
+            fullPath = fullPath.substring(0, fullPath.length() - 1);
+        }
+
+        return fullPath.isEmpty() ? "/" : fullPath;
+    }
+
+    // 💡 Helper method to extract string values (StringLiteral) from annotations
+    private String getAnnotationValue(NodeWithAnnotations<?> node, String annotationName) {
+        return node.getAnnotationByName(annotationName)
+                .flatMap(anno -> anno.findAll(StringLiteralExpr.class).stream().findFirst())
+                .map(StringLiteralExpr::asString)
+                .orElse("");
     }
 }
