@@ -11,7 +11,7 @@ import java.util.List;
 public class ErrorJokboProperties {
     private boolean enabled = true;
     private String sourcePath = "src/main/java";
-    private String basePackage; // 추가됨! (예: com.jichul)
+    private String basePackage;
     private String enumClass;
     private List<String> exceptionClasses;
 }

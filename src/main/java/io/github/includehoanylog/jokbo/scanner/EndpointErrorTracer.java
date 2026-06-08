@@ -28,7 +28,7 @@ public class EndpointErrorTracer {
         List<ErrorDefinition> results = new ArrayList<>();
 
         for (CompilationUnit cu : astList) {
-            // 1. @RestController나 @Controller가 붙은 클래스만 필터링
+            // 1. Filter classes annotated with @RestController or @Controller
             List<ClassOrInterfaceDeclaration> controllers = cu.findAll(ClassOrInterfaceDeclaration.class).stream()
                     .filter(c -> c.isAnnotationPresent("RestController") || c.isAnnotationPresent("Controller"))
                     .toList();
@@ -36,7 +36,7 @@ public class EndpointErrorTracer {
             for (ClassOrInterfaceDeclaration controller : controllers) {
                 String className = controller.getNameAsString();
 
-                // 2. API 엔드포인트 메서드 찾기 (@GetMapping 등)
+                // 2. Identify API endpoint methods (e.g., @GetMapping, etc.)
                 List<MethodDeclaration> apiMethods = controller.findAll(MethodDeclaration.class).stream()
                         .filter(this::isMappingMethod)
                         .toList();
@@ -44,25 +44,25 @@ public class EndpointErrorTracer {
                 for (MethodDeclaration method : apiMethods) {
                     String methodName = method.getNameAsString();
 
-                    // 3. 해당 메서드 내에서 'throw' 구문 찾기
+                    // 3. Search for 'throw' statements within the matched method
                     List<ThrowStmt> throwStmts = method.findAll(ThrowStmt.class);
 
                     for (ThrowStmt throwStmt : throwStmts) {
-                        // throw 뒤에 있는게 객체 생성(new)인지 확인
+                        // Verify if the expression being thrown is an object instantiation (i.e., 'new' keyword)
                         if (throwStmt.getExpression().isObjectCreationExpr()) {
                             ObjectCreationExpr newExpr = throwStmt.getExpression().asObjectCreationExpr();
                             String exceptionName = newExpr.getType().getNameAsString();
 
-                            // 4. 우리가 타겟으로 삼은 예외 클래스인지 확인
+                            // 4. Check if the instantiated exception matches our target exception list
                             if (isTargetException(exceptionName)) {
-                                // 예: new BusinessException(ErrorCode.USER_NOT_FOUND) -> 첫번째 인자 추출
+                                // e.g., Extract the first argument from: new BusinessException(ErrorCode.USER_NOT_FOUND)
                                 if (!newExpr.getArguments().isEmpty()) {
                                     String argStr = newExpr.getArguments().get(0).toString();
 
-                                    // 'ErrorCode.USER_NOT_FOUND' 에서 'USER_NOT_FOUND' 부분만 추출
+                                    // Extract the constant name (e.g., 'USER_NOT_FOUND' from 'ErrorCode.USER_NOT_FOUND')
                                     String enumKey = extractEnumConstant(argStr);
 
-                                    // 5. 사전에 있는 에러면 최종 바구니(DTO)에 담기!
+                                    // 5. If the parsed enum key exists in the dictionary, map it to the ErrorDefinition DTO!
                                     if (errorDictionary.containsKey(enumKey)) {
                                         ErrorCodeDetail detail = errorDictionary.get(enumKey);
                                         results.add(ErrorDefinition.builder()
@@ -73,7 +73,7 @@ public class EndpointErrorTracer {
                                                 .methodName(methodName)
                                                 .build());
 
-                                        log.info("error-jokbo: 에러 감지됨 -> [{}] {} in {}",
+                                        log.info("error-jokbo: Error detected -> [{}] {} in API: {}",
                                                 detail.getStatus(), detail.getName(), methodName);
                                     }
                                 }
@@ -87,7 +87,7 @@ public class EndpointErrorTracer {
     }
 
     /**
-     * API 통신용 메서드인지 어노테이션으로 판별
+     * Determines if a method acts as an API endpoint by checking its mapping annotations.
      */
     private boolean isMappingMethod(MethodDeclaration method) {
         return method.isAnnotationPresent("GetMapping") ||
@@ -96,11 +96,12 @@ public class EndpointErrorTracer {
                 method.isAnnotationPresent("DeleteMapping") ||
                 method.isAnnotationPresent("PatchMapping") ||
                 method.isAnnotationPresent("RequestMapping") ||
-                method.isAnnotationPresent("Operation"); // Swagger 명세 기준 추가
+                method.isAnnotationPresent("Operation"); // Includes Swagger specification annotations
     }
 
     /**
-     * 패키지 경로를 제외한 클래스명만 비교 (예: com.ex.BusinessException -> BusinessException)
+     * Compares the exception class name by omitting the package path.
+     * (e.g., 'com.ex.BusinessException' becomes 'BusinessException')
      */
     private boolean isTargetException(String exceptionName) {
         return targetExceptions.stream()
@@ -109,12 +110,13 @@ public class EndpointErrorTracer {
     }
 
     /**
-     * ErrorCode.USER_NOT_FOUND 형태에서 '.' 뒷부분(Enum 상수명)만 추출
+     * Extracts the Enum constant name by stripping the class prefix.
+     * (e.g., returns 'USER_NOT_FOUND' from 'ErrorCode.USER_NOT_FOUND')
      */
     private String extractEnumConstant(String argStr) {
         if (argStr.contains(".")) {
             return argStr.substring(argStr.lastIndexOf(".") + 1);
         }
-        return argStr; // static import 된 경우 등
+        return argStr; // Handles cases like static imports
     }
 }

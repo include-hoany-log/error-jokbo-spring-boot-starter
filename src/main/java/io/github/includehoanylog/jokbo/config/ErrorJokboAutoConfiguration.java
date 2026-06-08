@@ -27,7 +27,7 @@ public class ErrorJokboAutoConfiguration {
 
     @Bean
     public JavaParserErrorScanner javaParserErrorScanner(ErrorJokboProperties properties) {
-        log.info("error-jokbo: 오픈소스 라이브러리 가동 중...");
+        log.info("error-jokbo: Starting open-source library...");
 
         ProjectAstParser.initialize(properties.getSourcePath());
         List<CompilationUnit> allParsedFiles = ProjectAstParser.parseAllJavaFiles(properties.getSourcePath());
@@ -38,7 +38,7 @@ public class ErrorJokboAutoConfiguration {
         return scanner;
     }
 
-    // 🌟 동적 HTTP 상태 코드 분리형 스웨거 렌더링 엔진
+    // 🌟 Dynamic HTTP Status Code Segregated Swagger Rendering Engine
     @Bean
     public OperationCustomizer errorJokboOperationCustomizer(JavaParserErrorScanner scanner, ErrorJokboProperties properties) {
         return (operation, handlerMethod) -> {
@@ -57,36 +57,36 @@ public class ErrorJokboAutoConfiguration {
                         Class<?> enumClass = Class.forName(properties.getEnumClass());
                         Object[] enumConstants = enumClass.getEnumConstants();
 
-                        String errorMessage = "에러 메시지를 찾을 수 없습니다.";
-                        String statusCode = "500"; // 👈 기본값은 500으로 설정
+                        String errorMessage = "Error message not found.";
+                        String statusCode = "500"; // 👈 Default value set to 500
 
-                        // 1. 엔티티와 일치하는 Enum 상수 추적
+                        // 1. Trace the Enum constant matching the entity
                         for (Object constant : enumConstants) {
                             if (((Enum<?>) constant).name().equals(errorCode)) {
 
-                                // 2. getMessage() 호출하여 에러 메시지 획득
+                                // 2. Obtain error message by calling getMessage()
                                 try {
                                     Method getMessageMethod = enumClass.getMethod("getMessage");
                                     errorMessage = (String) getMessageMethod.invoke(constant);
                                 } catch (NoSuchMethodException e) {
-                                    log.debug("Enum에 getMessage() 메서드가 없습니다.");
+                                    log.debug("Method getMessage() not found in Enum.");
                                 }
 
-                                // 3. 🌟 핵심: getStatusCode() 호출하여 HTTP 상태 코드 동적 획득!
+                                // 3. 🌟 Core: Dynamically obtain HTTP status code by calling getStatusCode()!
                                 try {
                                     Method getStatusCodeMethod = enumClass.getMethod("getStatusCode");
                                     statusCode = (String) getStatusCodeMethod.invoke(constant);
                                 } catch (NoSuchMethodException e) {
-                                    log.debug("Enum에 getStatusCode() 메서드가 없습니다. 기본값 500을 사용합니다.");
+                                    log.debug("Method getStatusCode() not found in Enum. Using default value 500.");
                                 }
                                 break;
                             }
                         }
 
-                        // 4. 🌟 해당 에러 코드에 명시된 HTTP 상태 코드(예: 400 또는 500) 그룹 틀을 찾거나 생성
+                        // 4. 🌟 Find or create the response group for the specified HTTP status code (e.g., 400 or 500)
                         ApiResponse apiResponse = responses.get(statusCode);
                         if (apiResponse == null) {
-                            String description = statusCode.startsWith("4") ? "클라이언트 요청 오류" : "서버 내부 오류";
+                            String description = statusCode.startsWith("4") ? "Client Request Error" : "Internal Server Error";
                             apiResponse = new ApiResponse().description(description);
 
                             MediaType mediaType = new MediaType().schema(new Schema<>().type("object"));
@@ -95,10 +95,10 @@ public class ErrorJokboAutoConfiguration {
                             responses.addApiResponse(statusCode, apiResponse);
                         }
 
-                        // 5. 해당 상태 코드 그룹의 미디어 타입 꺼내기
+                        // 5. Extract the media type for the corresponding status code group
                         MediaType mediaType = apiResponse.getContent().get("application/json");
 
-                        // 6. JSON 예시 데이터 바인딩
+                        // 6. Bind JSON example data
                         java.util.Map<String, String> exampleMap = new java.util.LinkedHashMap<>();
                         exampleMap.put("code", errorCode);
                         exampleMap.put("message", errorMessage);
@@ -107,11 +107,11 @@ public class ErrorJokboAutoConfiguration {
                         example.setValue(exampleMap);
                         example.setSummary(errorMessage);
 
-                        // 7. 드롭다운 목록에 최종 안착
+                        // 7. Finally, land in the dropdown list
                         mediaType.addExamples(errorCode, example);
 
                     } catch (Exception e) {
-                        log.warn("error-jokbo: Enum 동적 파싱 중 예외 발생 (코드: {})", errorCode, e);
+                        log.warn("error-jokbo: Exception occurred during dynamic Enum parsing (Code: {})", errorCode, e);
                     }
                 });
             }

@@ -5,7 +5,7 @@ import java.util.List;
 
 public interface ErrorScanner {
     /**
-     * 지정된 소스 경로를 탐색하여 비즈니스 에러 정의들을 추출합니다.
+     * Scans the specified source path to extract business error definitions.
      */
     List<ErrorDefinition> scan(String sourcePath, String enumClassPath, List<String> targetExceptionClasses);
 }

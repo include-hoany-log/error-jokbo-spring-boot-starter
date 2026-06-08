@@ -27,7 +27,8 @@ public class JavaParserErrorScanner {
     }
 
     public void scanAndMapErrors() {
-        log.info("error-jokbo: 딥-트레이싱 에러 추적 분석을 시작합니다... (Target: {})", basePackage);
+        // 🌟 시작 로그를 전문적인 영어로 변경
+        log.info("error-jokbo: Starting deep-tracing error analysis... (Target: {})", basePackage);
 
         for (CompilationUnit cu : allParsedFiles) {
             cu.findAll(ClassOrInterfaceDeclaration.class).stream()
@@ -41,14 +42,14 @@ public class JavaParserErrorScanner {
                                 Set<String> apiErrors = tracer.trace(method);
 
                                 if (!apiErrors.isEmpty()) {
-                                    // 컨트롤러 이름과 메서드 이름을 조합해서 고유 키를 만듭니다!
                                     String className = controller.getNameAsString();
                                     String methodName = method.getNameAsString();
                                     String mapKey = className + "." + methodName;
 
-                                    log.info("API [{}] 에서 딥-에러 발견!: {}", mapKey, apiErrors);
+                                    // 🌟 대망의 전문적인 영어 로그 포맷 적용
+                                    // 출력 예시: [UserInfoController.getUserInfo] [NOT_FOUND_USER] Registered Swagger error specification.
+                                    log.info("[{}] {} Registered Swagger error specification.", mapKey, apiErrors);
 
-                                    // 🌟 수집된 에러들을 바구니에 저장!
                                     endpointErrorMap.put(mapKey, apiErrors);
                                 }
                             }

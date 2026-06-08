@@ -21,7 +21,7 @@ public class ErrorJokboSwaggerCustomizer implements OperationCustomizer {
     private final Map<String, List<ErrorDefinition>> errorCache;
 
     public ErrorJokboSwaggerCustomizer(List<ErrorDefinition> errorDefinitions) {
-        // 빠른 검색을 위해 클래스명#메서드명 구조로 그룹핑하여 맵에 보관합니다.
+        // Group by className#methodName structure and store in a map for fast lookups.
         this.errorCache = errorDefinitions.stream()
                 .collect(Collectors.groupingBy(
                         err -> err.getClassName() + "#" + err.getMethodName()
@@ -34,7 +34,7 @@ public class ErrorJokboSwaggerCustomizer implements OperationCustomizer {
         String methodName = handlerMethod.getMethod().getName();
         String cacheKey = className + "#" + methodName;
 
-        // 현재 API 엔드포인트 메서드에 매핑된 에러가 있는지 확인
+        // Check if there are any errors mapped to the current API endpoint method.
         if (errorCache.containsKey(cacheKey)) {
             List<ErrorDefinition> matchedErrors = errorCache.get(cacheKey);
             ApiResponses apiResponses = operation.getResponses();
@@ -44,15 +44,15 @@ public class ErrorJokboSwaggerCustomizer implements OperationCustomizer {
                 operation.setResponses(apiResponses);
             }
 
-            // 발견된 에러들을 HTTP 상태 코드별로 스웨거 명세에 주입
+            // Inject the found errors into the Swagger specification, grouped by HTTP status code.
             for (ErrorDefinition error : matchedErrors) {
                 String statusStr = String.valueOf(error.getHttpStatus());
 
-                // 기존에 스웨거가 해당 상태 코드의 응답을 가지고 있는지 확인, 없으면 새로 생성
+                // Check if Swagger already has a response for this status code; if not, create a new one.
                 ApiResponse apiResponse = apiResponses.computeIfAbsent(statusStr, k -> new ApiResponse()
-                        .description(error.getHttpStatus() + " 비즈니스 예외 발생"));
+                        .description(error.getHttpStatus() + " Business Exception"));
 
-                // 에러 메시지 구조 정의 (스웨거 예시 필드 채우기)
+                // Define the error message structure (populate the Swagger example fields).
                 if (apiResponse.getContent() == null) {
                     Schema<Map<String, Object>> errorSchema = new Schema<>();
                     errorSchema.setType("object");
@@ -63,11 +63,11 @@ public class ErrorJokboSwaggerCustomizer implements OperationCustomizer {
                             new MediaType().schema(errorSchema));
                     apiResponse.setContent(content);
                 } else {
-                    // 같은 상태 코드에 여러 에러가 있다면 description에 누적 표시
+                    // If there are multiple errors for the same status code, append them to the description.
                     apiResponse.setDescription(apiResponse.getDescription() + " / " + error.getErrorCode() + ": " + error.getErrorMessage());
                 }
             }
-            log.info("error-jokbo: Swagger 문서 주입 성공 -> API: {}", cacheKey);
+            log.info("error-jokbo: Successfully injected Swagger documentation -> API: {}", cacheKey);
         }
 
         return operation;

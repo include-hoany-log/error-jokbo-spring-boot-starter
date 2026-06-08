@@ -20,9 +20,9 @@ import java.util.stream.Stream;
 @Slf4j
 public class ProjectAstParser {
 
-    // 파서 초기화 (네비게이션 장착)
+    // Initialize the parser (Configure the symbol solver for deep navigation)
     public static void initialize(String sourcePath) {
-        log.info("error-jokbo: JavaParser Symbol Solver 초기화 중... (경로: {})", sourcePath);
+        log.info("error-jokbo: Initializing JavaParser Symbol Solver... (Path: {})", sourcePath);
 
         CombinedTypeSolver typeSolver = new CombinedTypeSolver();
         typeSolver.add(new ReflectionTypeSolver());
@@ -34,7 +34,7 @@ public class ProjectAstParser {
         StaticJavaParser.setConfiguration(config);
     }
 
-    // 소스 경로의 모든 자바 파일을 파싱
+    // Parse all Java files within the specified source directory
     public static List<CompilationUnit> parseAllJavaFiles(String sourcePath) {
         List<CompilationUnit> compilationUnits = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(Paths.get(sourcePath))) {
@@ -44,11 +44,11 @@ public class ProjectAstParser {
                         try {
                             compilationUnits.add(StaticJavaParser.parse(p));
                         } catch (Exception e) {
-                            log.warn("파싱 실패: {}", p, e);
+                            log.warn("Failed to parse file: {}", p, e);
                         }
                     });
         } catch (Exception e) {
-            log.error("소스 경로 순회 실패", e);
+            log.error("Failed to traverse the source directory", e);
         }
         return compilationUnits;
     }
