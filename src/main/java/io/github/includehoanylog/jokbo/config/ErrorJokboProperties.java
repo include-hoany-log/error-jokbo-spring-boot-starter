@@ -13,5 +13,6 @@ public class ErrorJokboProperties {
     private String sourcePath = "src/main/java";
     private String basePackage;
     private String enumClass;
+    private String errorResponseClass; // 🌟 추가: 사용자의 커스텀 에러 응답 객체 패키지 경로 (e.g., "com.example.dto.GlobalErrorResponse")
     private List<String> exceptionClasses;
 }
