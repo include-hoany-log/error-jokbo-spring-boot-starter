@@ -29,7 +29,14 @@ import java.util.*;
 @ConditionalOnProperty(prefix = "error-jokbo", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class ErrorJokboAutoConfiguration {
 
-    // 🌟 이 부분이 실수로 지워졌을 겁니다! 다시 부활시켰습니다.
+    /**
+     * 🌟 추가: 개발자가 커스텀 응답 객체를 지정하지 않았을 때 사용할 기본 디폴트 에러 응답 객체
+     */
+    public static class DefaultErrorResponse {
+        private String code;
+        private String message;
+    }
+
     @Bean
     public JavaParserErrorScanner javaParserErrorScanner(ErrorJokboProperties properties) {
         log.info("error-jokbo: Starting open-source library...");
@@ -78,7 +85,13 @@ public class ErrorJokboAutoConfiguration {
                             }
                         }
 
-                        Class<?> responseClass = Class.forName(properties.getErrorResponseClass());
+                        // 🌟 변경: errorResponseClass 설정이 없거나 비어있으면 DefaultErrorResponse.class를 사용하도록 분기 처리
+                        Class<?> responseClass;
+                        if (properties.getErrorResponseClass() != null && !properties.getErrorResponseClass().isBlank()) {
+                            responseClass = Class.forName(properties.getErrorResponseClass());
+                        } else {
+                            responseClass = DefaultErrorResponse.class;
+                        }
 
                         ApiResponse apiResponse = responses.get(statusCode);
                         if (apiResponse == null) {
